@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pedestrian Detection System</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="header-left">
+      <div class="status-dot"></div>
+      <h1>Pedestrian Detection System</h1>
+    </div>
+    <div class="header-badges">
+      <span class="badge green">YOLOv8s</span>
+      <span class="badge blue">OpenVINO INT8</span>
+      <span class="badge amber">KITTI Dataset</span>
+    </div>
+  </header>
+
+  <!-- Metrics Bar -->
+  <div class="metrics-bar">
+    <div class="metric-card">
+      <p class="metric-label">Model</p>
+      <p class="metric-value green">YOLOv8s</p>
+    </div>
+    <div class="metric-card">
+      <p class="metric-label">mAP50</p>
+      <p class="metric-value blue">0.842</p>
+    </div>
+    <div class="metric-card">
+      <p class="metric-label">Precision</p>
+      <p class="metric-value blue">0.887</p>
+    </div>
+    <div class="metric-card">
+      <p class="metric-label">Recall</p>
+      <p class="metric-value blue">0.733</p>
+    </div>
+    <div class="metric-card">
+      <p class="metric-label">Speedup</p>
+      <p class="metric-value amber">2.24x</p>
+    </div>
+    <div class="metric-card">
+      <p class="metric-label">Optimization</p>
+      <p class="metric-value green">INT8</p>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('image')">Image Detection</button>
+    <button class="tab" onclick="switchTab('video')">Video Detection</button>
+    <button class="tab" onclick="switchTab('dataset')">Dataset Browser</button>
+  </div>
+
+  <!-- Image Tab -->
+  <div id="tab-image" class="tab-content active">
+    <div class="two-col">
+      <!-- Left: Upload -->
+      <div class="panel">
+        <p class="panel-label">Input Image</p>
+        <div class="upload-zone" id="img-drop-zone"
+             onclick="document.getElementById('img-input').click()"
+             ondragover="event.preventDefault()"
+             ondrop="handleImgDrop(event)">
+          <div class="upload-icon"></div>
+          <p>Click to upload or drag & drop</p>
+          <p class="upload-sub">PNG, JPG supported</p>
+          <input type="file" id="img-input" accept=".png,.jpg,.jpeg"
+                 onchange="handleImgUpload(event)" hidden>
+        </div>
+        <img id="img-preview" class="preview hidden" alt="preview">
+        <button class="btn-detect" id="btn-detect-img"
+                onclick="detectImage()" disabled>
+          Detect Pedestrians
+        </button>
+      </div>
+
+      <!-- Right: Result -->
+      <div class="panel">
+        <p class="panel-label">Detection Result</p>
+        <div class="result-zone" id="img-result-zone">
+          <p class="placeholder">Result appears here</p>
+        </div>
+        <div class="stats-row">
+          <div class="stat-box">
+            <p class="stat-label">Pedestrians</p>
+            <p class="stat-val green" id="stat-count">—</p>
+          </div>
+          <div class="stat-box">
+            <p class="stat-label">Inference</p>
+            <p class="stat-val blue" id="stat-time">—</p>
+          </div>
+          <div class="stat-box">
+            <p class="stat-label">Avg confidence</p>
+            <p class="stat-val amber" id="stat-conf">—</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Video Tab -->
+  <div id="tab-video" class="tab-content">
+    <div class="two-col">
+      <!-- Left: Upload -->
+      <div class="panel">
+        <p class="panel-label">Input Video</p>
+        <div class="upload-zone" id="vid-drop-zone"
+             onclick="document.getElementById('vid-input').click()"
+             ondragover="event.preventDefault()"
+             ondrop="handleVidDrop(event)">
+          <div class="upload-icon video"></div>
+          <p>Click to upload video</p>
+          <p class="upload-sub">MP4, AVI, MOV supported</p>
+          <input type="file" id="vid-input" accept=".mp4,.avi,.mov"
+                 onchange="handleVidUpload(event)" hidden>
+        </div>
+        <video id="vid-preview" class="preview hidden" controls></video>
+        <button class="btn-detect" id="btn-detect-vid"
+                onclick="detectVideo()" disabled>
+          Process Video
+        </button>
+        <div id="vid-progress" class="progress hidden">
+          <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill"></div>
+          </div>
+          <p class="progress-text" id="progress-text">Processing...</p>
+        </div>
+      </div>
+
+      <!-- Right: Result -->
+      <div class="panel">
+        <p class="panel-label">Detection Result</p>
+        <div class="result-zone" id="vid-result-zone">
+          <p class="placeholder">Processed video appears here</p>
+        </div>
+        <div class="stats-row">
+          <div class="stat-box">
+            <p class="stat-label">Total frames</p>
+            <p class="stat-val green" id="vid-frames">—</p>
+          </div>
+          <div class="stat-box">
+            <p class="stat-label">Total detections</p>
+            <p class="stat-val blue" id="vid-dets">—</p>
+          </div>
+          <div class="stat-box">
+            <p class="stat-label">Avg FPS</p>
+            <p class="stat-val amber" id="vid-fps">—</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dataset Tab -->
+  <div id="tab-dataset" class="tab-content">
+    <div class="dataset-header">
+      <p class="panel-label">KITTI Validation Dataset — Pick an image to detect</p>
+      <input type="text" id="search-input"
+             placeholder="Search by filename..."
+             oninput="filterImages(this.value)">
+    </div>
+    <div class="image-grid" id="image-grid">
+      <p class="placeholder">Loading dataset images...</p>
+    </div>
+    <!-- Selected image result -->
+    <div id="dataset-result" class="hidden">
+      <div class="two-col">
+        <div class="panel">
+          <p class="panel-label">Original</p>
+          <img id="ds-original" class="preview" alt="original">
+        </div>
+        <div class="panel">
+          <p class="panel-label">Detected</p>
+          <img id="ds-detected" class="preview" alt="detected">
+          <div class="stats-row">
+            <div class="stat-box">
+              <p class="stat-label">Pedestrians</p>
+              <p class="stat-val green" id="ds-count">—</p>
+            </div>
+            <div class="stat-box">
+              <p class="stat-label">Inference</p>
+              <p class="stat-val blue" id="ds-time">—</p>
+            </div>
+            <div class="stat-box">
+              <p class="stat-label">Avg confidence</p>
+              <p class="stat-val amber" id="ds-conf">—</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <span>Pedestrian Detection using YOLOv8 and OpenVINO Optimization</span>
+    <span>Final Year Major Project</span>
+  </footer>
+
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
